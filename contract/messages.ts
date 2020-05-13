@@ -11,6 +11,13 @@ export class CreateWall implements Message {
     }
 }
 
+export class DeleteWall implements Message {
+    type = "DeleteWall";
+
+    constructor(public name: string) {
+    }
+}
+
 export class JoinWall implements Message {
     type = "JoinWall";
 
@@ -27,10 +34,13 @@ export class UserJoinedWall implements Message {
     ) {}
 }
 
-export class LeaveWall implements Message {
-    type = "LeaveWall";
+export class UserLeftWall implements Message {
+    type = "UserLeftWall";
 
-    constructor(public name: string) {
+    constructor(
+        public wallName: string,
+        public userId: string
+    ) {
     }
 }
 

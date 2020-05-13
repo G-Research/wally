@@ -1,4 +1,4 @@
-import { Message, WallyError, WallState, NewNote, MoveNote, UpdateNoteText, UserJoinedWall, SelectNote, DeleteNote, NewLine, UpdateLine, DeleteLine } from "wally-contract";
+import { Message, WallyError, WallState, NewNote, MoveNote, UpdateNoteText, UserJoinedWall, SelectNote, DeleteNote, NewLine, UpdateLine, DeleteLine, DeleteWall, UpdateUser, UserLeftWall } from "wally-contract";
 
 export interface WallReducerState {
     wall?: WallState | undefined;
@@ -27,6 +27,13 @@ export function wallReducer(
 
     if (state.wall) {
         switch (action.type) {
+            case DeleteWall.name:
+                const deleteWall = action as DeleteWall;
+                if (state.wall.name === deleteWall.name) {
+                    return initialState;
+                }
+                return state;
+
             case NewNote.name:
                 const newNote = action as NewNote;
                 if (state.wall.name !== newNote.wallName) {
@@ -139,6 +146,34 @@ export function wallReducer(
                         selectedNotes: selectedNotes
                     }
                 };
+
+            case UpdateUser.name:
+                const updateUser = action as UpdateUser;
+                const existingUser = state.wall?.users.find(x => x.id === updateUser.userId);
+                if (existingUser) {
+                    return {
+                        ...state,
+                        wall: {
+                            ...state.wall,
+                            users: [...state.wall.users.filter(x => x.id !== updateUser.userId), {...existingUser, ...updateUser.user}]
+                        }
+                    };
+                }
+                return state;
+
+            case UserLeftWall.name:
+                const userLeftWall = action as UserLeftWall;
+                if (state.wall?.name === userLeftWall.wallName) {
+                    return {
+                        ...state,
+                        wall: {
+                            ...state.wall,
+                            users: [...state.wall.users.filter(x => x.id !== userLeftWall.userId)]
+                        }
+                    };
+                }
+                return state;
+                
         }
     }
 

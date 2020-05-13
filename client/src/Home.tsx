@@ -1,6 +1,6 @@
 import React, { Component, Dispatch } from "react";
-import { Navbar, Nav, FormControl, Card, Button, Alert } from "react-bootstrap";
-import { User as UserModel, CreateWall, JoinWall, Message, WallState } from "wally-contract";
+import { Navbar, Nav, FormControl, Card, Button, Alert, Modal } from "react-bootstrap";
+import { User as UserModel, CreateWall, JoinWall, Message, WallState, DeleteWall } from "wally-contract";
 import { useParams, Switch, Route, Redirect } from "react-router-dom";
 
 import Wall from "./Wall";
@@ -13,6 +13,7 @@ import { componentDidMountChanges, useTraceUpdate } from "./utils";
 
 interface HomeState {
     wallName: string;
+    showAbout: boolean;
 }
 
 interface WallProps {
@@ -42,7 +43,8 @@ const WallLoader: React.FunctionComponent = (props: any) => {
 interface DispatchFromProps {    
     createWall: (id: string) => void,
     joinWall: (id: string) => void,
-    toggleSideBar: () => void
+    toggleSideBar: () => void,
+    deleteWall: (id: string) => void
 }
 
 export default connect<WallProps, DispatchFromProps>(
@@ -50,13 +52,15 @@ export default connect<WallProps, DispatchFromProps>(
     (dispatch: Dispatch<Message>) => ({        
         createWall: (id: string) => dispatch(new SendWrapper(new CreateWall(id))),
         joinWall: (id: string) => dispatch(new SendWrapper(new JoinWall(id))),
-        toggleSideBar: () => dispatch({type: "ToggleSideBar"})
+        toggleSideBar: () => dispatch({type: "ToggleSideBar"}),
+        deleteWall: (id: string) => dispatch(new SendWrapper(new DeleteWall(id))),
     })
 )(
 class Home extends Component<DispatchFromProps & WallProps> {
 
     public state: HomeState = {
-        wallName: ''
+        wallName: '',
+        showAbout: false
     };
 
     public componentDidUpdate(prevProps: any, prevState: any): void {
@@ -75,9 +79,13 @@ class Home extends Component<DispatchFromProps & WallProps> {
         this.props.joinWall(this.state.wallName);
     }
 
+    public deleteWall(wallName: string): void {
+        this.props.deleteWall(wallName);
+    }
+
     public render(): JSX.Element {
         return (
-            <div className="App" style={{ display: 'flex', flexDirection: 'row', background: this.props.user.useNightMode ? '#282c34' : 'inherit'}}>
+            <div className="App" style={{ position: 'fixed', display: 'flex', flexDirection: 'row', background: this.props.user.useNightMode ? '#282c34' : 'inherit'}}>
             
                 <Navbar variant={this.props.user.useNightMode ? 'dark' : 'light'} 
                         bg={this.props.user.useNightMode ? 'dark' : 'light'} 
@@ -89,11 +97,26 @@ class Home extends Component<DispatchFromProps & WallProps> {
 
                     { 
                         this.props.home.isSideBarOpen ? 
-                        <Nav className="mr-auto" style={{ display: 'flex', flexDirection: 'column' }}>
+                        <Nav className="mr-auto" style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
                             <Navbar.Text style={{ borderBottom: '1px solid', textTransform: 'uppercase', fontSize: 'small'}}>
                                 Recently Viewed
                             </Navbar.Text>
-                            {this.props.home.recentWalls.map(w => <Nav.Link key={w} href={"/" + escape(w)}>{w}</Nav.Link>)}
+                            {this.props.home.recentWalls.map(w => 
+                                <div key={w} style={{display: 'flex', flexDirection: 'row', justifyContent: 'space-between'}}>
+                                    <Nav.Link href={"/" + escape(w)}>
+                                        {w}
+                                    </Nav.Link>
+                                    <Button type="button"
+                                            title="Delete wall" 
+                                            variant={this.props.user.useNightMode ? 'dark' : 'light'}
+                                            onClick={() => this.deleteWall(w)}>
+                                        <svg className="bi bi-trash" width="1em" height="1em" viewBox="0 0 16 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M5.5 5.5A.5.5 0 016 6v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm2.5 0a.5.5 0 01.5.5v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm3 .5a.5.5 0 00-1 0v6a.5.5 0 001 0V6z"/>
+                                            <path fillRule="evenodd" d="M14.5 3a1 1 0 01-1 1H13v9a2 2 0 01-2 2H5a2 2 0 01-2-2V4h-.5a1 1 0 01-1-1V2a1 1 0 011-1H6a1 1 0 011-1h2a1 1 0 011 1h3.5a1 1 0 011 1v1zM4.118 4L4 4.059V13a1 1 0 001 1h6a1 1 0 001-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z" clipRule="evenodd"/>
+                                        </svg>
+                                    </Button>
+                                </div>
+                            )}
                         </Nav>
                         : undefined
                     }
@@ -103,7 +126,7 @@ class Home extends Component<DispatchFromProps & WallProps> {
                     <User isExpanded={this.props.home.isSideBarOpen} />
 
                     <Nav style={{justifyContent: 'space-between', width: this.props.home.isSideBarOpen ? '100%' : undefined}}>
-                        {this.props.home.isSideBarOpen ? <Navbar.Text>About</Navbar.Text> : undefined}
+                        {this.props.home.isSideBarOpen ? <Nav.Link onClick={() => this.setState({...this.state, showAbout: true})}>About</Nav.Link> : undefined}
                         <Button type="button" 
                                 title="Toggle Sidebar"
                                 variant={this.props.user.useNightMode ? 'dark' : 'light'} 
@@ -122,7 +145,7 @@ class Home extends Component<DispatchFromProps & WallProps> {
                     </Nav>
                 </Navbar>
 
-                <div style={{ position: 'relative', width: this.props.home.isSideBarOpen ? '85%' : 'calc(100% - 62px)', height: '100%' }}>
+                <div style={{ overflow: 'auto', position: 'relative', width: this.props.home.isSideBarOpen ? '85%' : 'calc(100% - 62px)', height: '100%' }}>
 
                     {this.props.wall.wall ? <Redirect to={"/" + escape(this.props.wall.wall.name)} /> : undefined}
                     {this.props.wall.error ? <Redirect to={"/"} /> : undefined}
@@ -161,7 +184,23 @@ class Home extends Component<DispatchFromProps & WallProps> {
                             <WallLoader />
                         </Route>
                     </Switch>
-                </div>                
+                </div>  
+
+                <Modal size="sm"
+                       className={this.props.user.useNightMode ? "dark-modal" : "light-modal"}
+                       show={this.state.showAbout}
+                       onHide={() => this.setState({...this.state, showAbout: false})}
+                       aria-labelledby="contained-modal-title-vcenter"
+                       centered>
+                    <Modal.Body style={{display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
+                        <img alt="Wally logo" className="d-inline-block align-top" width="60" height="60" src="logo.png" style={{marginRight: '12px'}} />               
+                        <Modal.Title id="contained-modal-title-vcenter">
+                            [wall-y]
+                        </Modal.Title>
+
+                        <a href="http://github.com/niventc/wally" rel="noopener noreferrer" target="_blank">http://github.com/niventc/wally</a>
+                    </Modal.Body>
+                </Modal>              
 
             </div>
         )
